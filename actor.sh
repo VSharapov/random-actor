@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-set -x
+# set -x
 
 BROWSER_COMMAND="google-chrome"
 BROWSER_COMMAND="firefox"
@@ -16,17 +16,23 @@ function randomActorNumber {
 	return
 }
 
-
-# read actnumber
-actnumber=""
-while true; do
-	actor=""
-	actor="$(curl https://www.imdb.com/name/nm$(printf "%07d" ${actnumber})/ 2>/dev/null | grep meta.property..og.image | tr '"' '\n' | grep https | grep -v logos)"
-  if [[ "$actor" == "" ]]; then
-    actnumber="$(randomActorNumber)"
-  else
-    break
-  fi
-	$BROWSER_COMMAND $actor 2>/dev/null
-done
+function randomActorWithImage {
+  while true; do
+    actorNumber="$(randomActorNumber)"
+    actorIMDBURL="https://www.imdb.com/name/nm$(printf "%07d" ${actorNumber})/"
+    # TODO: grep for title.404 - most common issue
+    potentialPhotoURL="$(curl ${actorIMDBURL} 2>/dev/null | grep meta.property..og.image | tr '"' '\n' | grep https | grep -v logos)"
+    if [[ "$potentialPhotoURL" == "" ]]; then
+      echo Actor $actorNumber at $actorIMDBURL is either 404 or some other issue occured
+      continue
+    fi
+    if [[ "$potentialPhotoURL" == *"imdb_logo"* ]]; then
+      echo Actor $actorNumber at $actorIMDBURL has "imdb_logo" in their photoURL
+      continue
+    fi
+    $BROWSER_COMMAND $potentialPhotoURL
+    echo '^C to exit'
+    read
+  done
+}
 
